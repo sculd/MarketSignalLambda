@@ -8,6 +8,7 @@ _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S%z'
 _DATABASE_KEY_USER = 'user'
 
 _EVENT_KEY_QUERY_STRING_PARAMETER = 'queryStringParameters'
+_EVENT_KEY_PATH_PARAMETER = 'pathParameters'
 _PARAM_KEY_USERNAME = 'username'
 
 
@@ -41,13 +42,21 @@ def _get_policies(user_name):
     return items
 
 def lambda_handler(event, context):
+    path_parameters = event[_EVENT_KEY_PATH_PARAMETER]
     query_string_parameters = event[_EVENT_KEY_QUERY_STRING_PARAMETER]
+    print("path_parameters:", path_parameters)
     print("query_string_parameters:", query_string_parameters)
     user_name = None
     
+    if path_parameters:
+        if _PARAM_KEY_USERNAME in path_parameters:
+            user_name = path_parameters[_PARAM_KEY_USERNAME]
+    
+    '''    
     if query_string_parameters:
         if _PARAM_KEY_USERNAME in query_string_parameters:
             user_name = query_string_parameters[_PARAM_KEY_USERNAME]
+    '''    
     
     items = _get_policies(user_name)
 
