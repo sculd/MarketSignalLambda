@@ -11,7 +11,9 @@ _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S%z'
 _EVENT_KEY_QUERY_STRING_PARAMETER = 'queryStringParameters'
 _PARAM_KEY_FROM = 'from'
 _PARAM_KEY_TO = 'to'
+_PARAM_KEY_MARKET = 'market'
 _PARAM_KEY_SYMBOL = 'symbol'
+_DATABASE_KEY_MARKET = 'market'
 _DATABASE_KEY_DATE_ET = 'date_et'
 _DATABASE_KEY_TIMESTAMP = 'timestamp'
 _DATABASE_KEY_MIN_DROP = 'min_drop'
@@ -47,7 +49,7 @@ def dict_to_response(blob):
     return ret
 
 
-def _get_items(date_str, from_epoch, to_epoch, symbol):
+def _get_items(date_str, from_epoch, to_epoch, market, symbol):
     dynamodb = boto3.resource(_RESOURCE_DYNAMODB)
     table = dynamodb.Table(_TABLE_NAME)
 
@@ -64,17 +66,23 @@ def _get_items(date_str, from_epoch, to_epoch, symbol):
         )
 
     items = response['Items']
+    items = [i for i in items if i[_DATABASE_KEY_MARKET] == market]
+    items = [i for i in items if i[_DATABASE_KEY_TIMESTAMP] >= from_epoch and i[_DATABASE_KEY_TIMESTAMP] <= to_epoch]
     return items
 
 
 def lambda_handler(event, context):
     query_string_parameters = event[_EVENT_KEY_QUERY_STRING_PARAMETER]
     print("query_string_parameters:", query_string_parameters)
+    market = 'stock'
     symbol = None
-    from_epoch = int((datetime.datetime.now() - datetime.timedelta(hours=1)).timestamp())
+    from_epoch = int((datetime.datetime.now() - datetime.timedelta(hours=12)).timestamp())
     to_epoch = int(datetime.datetime.now().timestamp())
     
     if query_string_parameters:
+        if _PARAM_KEY_MARKET in query_string_parameters:
+            market = query_string_parameters[_PARAM_KEY_MARKET]
+
         if _PARAM_KEY_SYMBOL in query_string_parameters:
             symbol = query_string_parameters[_PARAM_KEY_SYMBOL]
     
@@ -86,19 +94,29 @@ def lambda_handler(event, context):
             t = datetime.datetime.strptime(query_string_parameters[_PARAM_KEY_TO], _DATETIME_FORMAT)
             to_epoch = int(t.timestamp())
 
+    print("market:", market)
     print("from_epoch:", from_epoch, ", to_epoch:", to_epoch)
     items = []
     t = datetime.datetime.fromtimestamp(from_epoch)
     date_str = t.strftime('%Y-%m-%d')
     date_str_to = datetime.datetime.fromtimestamp(to_epoch).strftime('%Y-%m-%d')
+    print("date_str_to:", date_str_to)
     while True:
-        items += _get_items(date_str, from_epoch, to_epoch, symbol)
+        print("date_str:", date_str)
+        items += _get_items(date_str, from_epoch, to_epoch, market, symbol)
         if date_str == date_str_to:
             break
         t += datetime.timedelta(days=1)
         date_str = t.strftime('%Y-%m-%d')
 
+    result = list(map(lambda blob: dict_to_response(blob), items))
+    result.sort(key = lambda blob: blob[_RESPONSE_KEY_DATETIME], reverse=True);
     return {
         'statusCode': 200,
-        'body': json.dumps(list(map(lambda blob: dict_to_response(blob), items)), cls=DecimalEncoder)
+        'headers': {
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        'body': json.dumps(result, cls=DecimalEncoder)
     }
