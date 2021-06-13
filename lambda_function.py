@@ -24,8 +24,10 @@ _DATABASE_KEY_DATE_ET = 'date_et'
 _DATABASE_KEY_TIMESTAMP = 'timestamp'
 _DATABASE_KEY_MIN_DROP = 'min_drop'
 _DATABASE_KEY_MAX_JUMP = 'max_jump'
+_DATABASE_KEY_THRESHOLD = 'threshold'
 _RESPONSE_KEY_DATE = 'date'
 _RESPONSE_KEY_DATETIME = 'datetime'
+_RESPONSE_EVENTS_SIZE_LIMIT = 30
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -63,12 +65,13 @@ def _get_items(date_str, from_epoch, to_epoch, market, symbol):
         response = table.query(
             KeyConditionExpression=Key(_DATABASE_KEY_DATE_ET).eq(date_str) & Key(_DATABASE_KEY_TIMESTAMP).between(
                 from_epoch, to_epoch),
-            FilterExpression=Attr(_PARAM_KEY_SYMBOL).eq(symbol)
+            FilterExpression=Attr(_PARAM_KEY_SYMBOL).eq(symbol) & ~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05')
         )
     else:
         response = table.query(
             KeyConditionExpression=Key(_DATABASE_KEY_DATE_ET).eq(date_str) & Key(_DATABASE_KEY_TIMESTAMP).between(
-                from_epoch, to_epoch)
+                from_epoch, to_epoch),
+            FilterExpression=~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05')
         )
 
     items = response['Items']
@@ -116,7 +119,7 @@ def _add_recent_prices(market, result):
     threads = list()
 
     b = 0
-    batch_size = 20
+    batch_size = 40
     while b * batch_size < len(result):
         print('batch:', b)
         b_head = b * batch_size
@@ -173,7 +176,7 @@ def lambda_handler(event, context):
 
     result = list(map(lambda blob: dict_to_response(blob), items))
     result.sort(key=lambda blob: blob[_RESPONSE_KEY_DATETIME], reverse=True)
-    result = result[:30]
+    result = result[:_RESPONSE_EVENTS_SIZE_LIMIT]
     _add_recent_prices(market, result)
     return {
         'statusCode': 200,
