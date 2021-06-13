@@ -25,6 +25,7 @@ _DATABASE_KEY_TIMESTAMP = 'timestamp'
 _DATABASE_KEY_MIN_DROP = 'min_drop'
 _DATABASE_KEY_MAX_JUMP = 'max_jump'
 _DATABASE_KEY_THRESHOLD = 'threshold'
+_DATABASE_KEY_WINDOW_SIZE_IN_MINUTES = 'window_size_in_minutes'
 _RESPONSE_KEY_DATE = 'date'
 _RESPONSE_KEY_DATETIME = 'datetime'
 _RESPONSE_EVENTS_SIZE_LIMIT = 30
@@ -65,13 +66,13 @@ def _get_items(date_str, from_epoch, to_epoch, market, symbol):
         response = table.query(
             KeyConditionExpression=Key(_DATABASE_KEY_DATE_ET).eq(date_str) & Key(_DATABASE_KEY_TIMESTAMP).between(
                 from_epoch, to_epoch),
-            FilterExpression=Attr(_PARAM_KEY_SYMBOL).eq(symbol) & ~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05')
+            FilterExpression=Attr(_PARAM_KEY_SYMBOL).eq(symbol) & ~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05') & ~Attr(_DATABASE_KEY_WINDOW_SIZE_IN_MINUTES).eq(360)
         )
     else:
         response = table.query(
             KeyConditionExpression=Key(_DATABASE_KEY_DATE_ET).eq(date_str) & Key(_DATABASE_KEY_TIMESTAMP).between(
                 from_epoch, to_epoch),
-            FilterExpression=~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05')
+            FilterExpression=~Attr(_DATABASE_KEY_THRESHOLD).eq('0.05') & ~Attr(_DATABASE_KEY_WINDOW_SIZE_IN_MINUTES).eq(360)
         )
 
     items = response['Items']
