@@ -25,10 +25,9 @@ _DATABASE_KEY_TIMESTAMP = 'timestamp'
 _DATABASE_KEY_MIN_DROP = 'min_drop'
 _DATABASE_KEY_MAX_JUMP = 'max_jump'
 _DATABASE_KEY_THRESHOLD = 'threshold'
-_DATABASE_KEY_WINDOW_SIZE_IN_MINUTES = 'window_size_in_minutes'
+_DATABASE_KEY_WINDOW_SIZE_IN_MINUTES = 'window_size_minutes'
 _RESPONSE_KEY_DATE = 'date'
 _RESPONSE_KEY_DATETIME = 'datetime'
-_RESPONSE_EVENTS_SIZE_LIMIT = 30
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -142,7 +141,7 @@ def lambda_handler(event, context):
     print("query_string_parameters:", query_string_parameters)
     market = 'stock'
     symbol = None
-    from_epoch = int((datetime.datetime.now() - datetime.timedelta(hours=12)).timestamp())
+    from_epoch = int((datetime.datetime.now() - datetime.timedelta(hours=24)).timestamp())
     to_epoch = int(datetime.datetime.now().timestamp())
 
     if query_string_parameters:
@@ -177,7 +176,7 @@ def lambda_handler(event, context):
 
     result = list(map(lambda blob: dict_to_response(blob), items))
     result.sort(key=lambda blob: blob[_RESPONSE_KEY_DATETIME], reverse=True)
-    result = result[:_RESPONSE_EVENTS_SIZE_LIMIT]
+    result = result[:30]
     _add_recent_prices(market, result)
     return {
         'statusCode': 200,
