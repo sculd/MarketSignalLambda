@@ -106,26 +106,30 @@ def _get_recent_price_symbol(symbol):
     return js['last']['price']
 
 
-def _get_recent_price(recent_prices, recent_prices_lock, i, market, symbol):
+def _get_recent_price(recent_prices, recent_prices_lock, market, symbol):
     with recent_prices_lock:
         if market == 'crypto':
-            recent_prices[i] = _get_recent_price_crypto(symbol)
+            recent_prices[symbol] = _get_recent_price_crypto(symbol)
         else:
-            recent_prices[i] = _get_recent_price_symbol(symbol)
+            recent_prices[symbol] = _get_recent_price_symbol(symbol)
 
 def _add_recent_prices(market, result):
-    recent_prices = [0 for _ in result]
+    '''
+    Adds "recent_price" fields to the entries of the given `result`.
+    '''
+    recent_prices ={}
     recent_prices_lock = threading.Lock()
     threads = list()
 
+    symbols = list(set([e['symbol'] for e in result]))
     b = 0
     batch_size = 40
-    while b * batch_size < len(result):
+    while b * batch_size < len(symbols):
         print('batch:', b)
         b_head = b * batch_size
-        for bi, entry in enumerate(result[b_head : b_head + batch_size]):
+        for bi, symbol in enumerate(symbols[b_head : b_head + batch_size]):
             x = threading.Thread(target=_get_recent_price,
-                                 args=(recent_prices, recent_prices_lock, b_head + bi, market, entry['symbol'],))
+                                 args=(recent_prices, recent_prices_lock, market, symbol,))
             threads.append(x)
             x.start()
 
@@ -134,7 +138,7 @@ def _add_recent_prices(market, result):
         b += 1
 
     for i, entry in enumerate(result):
-        entry['recent_price'] = recent_prices[i]
+        entry['recent_price'] = recent_prices[entry['symbol']]
 
 def lambda_handler(event, context):
     query_string_parameters = event[_EVENT_KEY_QUERY_STRING_PARAMETER]
