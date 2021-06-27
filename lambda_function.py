@@ -145,8 +145,6 @@ def lambda_handler(event, context):
     print("query_string_parameters:", query_string_parameters)
     market = 'stock'
     symbol = None
-    from_epoch = int((datetime.datetime.now() - datetime.timedelta(hours=24)).timestamp())
-    to_epoch = int(datetime.datetime.now().timestamp())
 
     if query_string_parameters:
         if _PARAM_KEY_MARKET in query_string_parameters:
@@ -164,7 +162,14 @@ def lambda_handler(event, context):
             to_epoch = int(t.timestamp())
 
     print("market:", market)
+
+    from_t = datetime.datetime.now() - datetime.timedelta(hours=24)
+    while market == 'stock' and from_t.weekday() >= 5:
+        from_t -= datetime.timedelta(hours=24)
+    from_epoch = int(from_t.timestamp())
+    to_epoch = int(datetime.datetime.now().timestamp())
     print("from_epoch:", from_epoch, ", to_epoch:", to_epoch)
+
     items = []
     t = datetime.datetime.fromtimestamp(from_epoch)
     date_str = t.strftime('%Y-%m-%d')
