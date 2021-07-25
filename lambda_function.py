@@ -79,7 +79,7 @@ def _get_items(date_str, from_epoch, to_epoch, market, symbol):
     items = [i for i in items if i[_DATABASE_KEY_TIMESTAMP] >= from_epoch and i[_DATABASE_KEY_TIMESTAMP] <= to_epoch]
     return items
 
-def _get_recent_price_crypto(symbol):
+def _get_recent_price_binance(symbol):
     url = _BINANCE_URL_FORMAT.format(symbol = symbol)
     r = requests.get(url)
     if not r.ok:
@@ -108,8 +108,8 @@ def _get_recent_price_symbol(symbol):
 
 def _get_recent_price(recent_prices, recent_prices_lock, market, symbol):
     with recent_prices_lock:
-        if market == 'crypto':
-            recent_prices[symbol] = _get_recent_price_crypto(symbol)
+        if market == 'binance':
+            recent_prices[symbol] = _get_recent_price_binance(symbol)
         else:
             recent_prices[symbol] = _get_recent_price_symbol(symbol)
 
